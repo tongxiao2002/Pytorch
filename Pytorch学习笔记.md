@@ -1,9 +1,9 @@
 <center><b><font size = 6>Pytorch学习笔记</font></b></center>
 <p align = 'right'>肖桐 PB18000037</p>
 
-# 1. Tensors的创建
+# 一. Tensors的创建
 
-## (1). `torch.empty()`
+## 1. `torch.empty()`
 
 未初始化，tensor中的值由分配空间中原来的数据决定。如：
 
@@ -11,7 +11,7 @@
 x = torch.empty(5, 3)
 ```
 
-## (2). `torch.rand()`
+## 2. `torch.rand()`
 
 创建一个所有元素都是在[0, 1]之间的随机数的tensor。如：
 
@@ -19,7 +19,7 @@ x = torch.empty(5, 3)
 x = torch.rand(5, 3)
 ```
 
-## (3). `torch.zeros()`
+## 3. `torch.zeros()`
 
 创建一个所有元素都被初始化为0的tensor。如：
 
@@ -27,7 +27,7 @@ x = torch.rand(5, 3)
 x = torch.zeros(5, 3)
 ```
 
-## (4). `torch.ones()`
+## 4. `torch.ones()`
 
 创建一个所有元素都被初始化为1的tensor。如：
 
@@ -35,7 +35,7 @@ x = torch.zeros(5, 3)
 x = torch.ones(5, 3)
 ```
 
-## (5). `torch.tensor()`或`torch.Tensor()`
+## 5. `torch.tensor()`或`torch.Tensor()`
 
 直接通过给定的数据创建tensor，方法的参数应该是一个list，或者numpy对象。如：
 
@@ -43,7 +43,7 @@ x = torch.ones(5, 3)
 x = torch.tensor([5.5, 3])
 ```
 
-## (6). `.new_xxx()`和`.xxx_like()`
+## 6. `.new_xxx()`和`.xxx_like()`
 
 这两个方法是基于一个已经存在的tensor创建新的tensor。两个方法都会继承输入的tensor的数据类型，除非使用`dtype`属性明确指出新建tensor的数据类型。如：
 
@@ -52,9 +52,9 @@ x = x.new_ones(5, 3, dtype = torch.double)
 x = torch.randn_like(x, dtype = torch.int32)
 ```
 
-# 2. Tensors的属性查看
+# 二. Tensors的属性查看
 
-## (1). `.size()`
+## 1. `.size()`
 
 `.size()`方法查看tensor的维度。如：
 
@@ -65,13 +65,13 @@ print(x.size())
 输出：torch.Size([5, 3])
 ```
 
-## (2). 
+## 2. 
 
 
 
-# 3. Tensors的操作
+# 三. Tensors的操作
 
-## (1). 基本运算（以加法为例）
+## 1. 基本运算（以加法为例）
 
 加法可以有多种表示方法，如下面的两种操作结果都相同。(有无特殊性况使得这两种操作结果不同？)
 
@@ -92,7 +92,7 @@ y.add_(x)	#表示将将y加上x, 并保存在y中
 
 同样的还有`y.copy_(x)`，`y.t_(x)`等等。
 
-## (2). 索引操作
+## 2. 索引操作
 
 tensor的维度：最先表示的是最高的维度，如：
 
@@ -104,7 +104,7 @@ x = torch.tensor(2, 3, 4)
 
 torch支持所有numpy和python列表的索引操作。
 
-## (3). reshape操作：`.view()`
+## 3. reshape操作：`.view()`
 
 可以通过使用`.view()`方法对tensor进行reshape，改变维度以及各个维度的长度。如：
 
@@ -114,7 +114,7 @@ y = x.view(16)	#改为1维, 第一维长度为16
 z = x.view(-1, 8)	#改为2维, 第一维长度为8, -1表示根据其他维度长度确定, 故这里第二维长度应该为2
 ```
 
-## (4). `.item()`
+## 4. `.item()`
 
 `.item()`方法可以将仅有一个元素的tensor转变为一个Python数字。如：
 
@@ -123,7 +123,7 @@ x = torch.tensor([-1.2])
 print(x)	#输出-1.2
 ```
 
-## (5). `.sum()`
+## 5. `.sum()`
 
 `.sum()`操作对tensor中的所有元素进行求和，得到一个只有一个元素的tensor，该元素即为原tensor所有元素求和得到的值。如：
 
@@ -136,13 +136,13 @@ print(y, type(y))
 tensor(4.) <class 'torch.Tensor'>
 ```
 
-## (5). `.mean()`
+## 6. `.mean()`
 
 `.mean()`方法对tensor中的所有元素进行求平均值，得到一个只有一个元素的tensor，该元素即为原tensor所有元素求和得到的值。
 
-# 4. AutoGrad自动求导
+# 四. AutoGrad自动求导
 
-## (1). 基本知识 or 前提知识
+## 1. 基本知识 or 前提知识
 
 `torch.Tensor` is the central class of the package. If you set its attribute `.requires_grad` as `True`, it starts to track all operations on it. When you finish your computation you can call `.backward()` and have all the gradients computed automatically. The gradient for this tensor will be accumulated into `.grad` attribute.
 
@@ -207,7 +207,7 @@ If you want to compute the derivatives, you can call `.backward()` on a `Tensor`
 
 即调用方法`.backward()`是需要向其中传递参数的，所传的参数与tensor的维度有关。如果tensor为标量则不需要传参数。
 
-## (2). 开始求梯度！
+## 2. 开始求梯度！
 
 比如现在构造一个只有一个元素的tensor：
 
@@ -256,7 +256,87 @@ y.backward(v)
 print(x.grad)
 ```
 
-# 5. 神经网络
+# 五. 神经网络
 
+可以使用`torch.nn`包来构建神经网络。
 
+A typical training procedure for a neural network is as follows:
 
+- Define the neural network that has some learnable parameters (or weights)
+- Iterate over a dataset of inputs
+- Process input through the network
+- Compute the loss (how far is the output from being correct)
+- Propagate gradients back into the network’s parameters
+- Update the weights of the network, typically using a simple update rule: `weight = weight - learning_rate * gradient`
+
+## 1. 构建神经网络
+
+## 2. 误差类
+
+[Pytorch Loss Functions](https://pytorch.org/docs/stable/nn.html#loss-functions)
+
+`torch.nn`包提供了多种误差函数，如最常用的几种分别如下：
+
+### (1). `torch.nn.L1Loss`
+
+```python
+torch.nn.L1Loss(size_average=None, reduce=None, reduction: str = 'mean')
+#reduction = 'None'|'mean'|'sum'
+```
+
+这个误差类适用于求绝对值误差。
+
+若输出为$\vec{x}$，目标为$\vec{y}$，且`reduction = 'None'`，则误差：
+
+$l(\vec{x}, \vec{y}) = L = \{l_1, \dots, l_N\}, l_n = |x_n - y_n|$
+
+如果`reduction = 'mean'`，意味着要对误差求平均值，即：
+
+$l(\vec{x}, \vec{y}) = mean(L)$
+
+如果`reduction = 'sum'`，意味着要对误差求和，即：
+
+$l(\vec{x}, \vec{y}) = sum(L)$
+
+### (2). `torch.MSELoss`
+
+```python
+torch.nn.MSELoss(size_average=None, reduce=None, reduction: str = 'mean')
+#reduction = 'None'|'mean'|'sum'
+```
+
+这个误差类适用于求平方误差。
+
+若输出为$\vec{x}$，目标为$\vec{y}$，且`reduction = 'None'`，则误差：
+
+$l(\vec{x}, \vec{y}) = L = \{l_1, \dots, l_N\}, l_n = (x_n - y_n)^2$
+
+如果`reduction = 'mean'`，意味着要对误差求平均值，即：
+
+$l(\vec{x}, \vec{y}) = mean(L)$
+
+如果`reduction = 'sum'`，意味着要对误差求和，即：
+
+$l(\vec{x}, \vec{y}) = sum(L)$
+
+Examples:
+
+```python
+loss = nn.MSELoss()	#使用默认设置, 即reduction = 'mean'
+inputs = torch.randn(3, 5, requires_grad=True)
+targets = torch.randn(3, 5)
+outputs = loss(inputs, target)	#计算误差
+output.backward()
+```
+
+### (3). `torch.nn.NLLLoss`
+
+```python
+torch.nn.NLLLoss(weight: Optional[torch.Tensor] = None, size_average=None, ignore_index: int = -100, reduce=None, reduction: str = 'mean')
+```
+
+The negative log likelihood loss. 负对数似然损失。
+
+## 3. `torch.optim` 修正类
+
+To use [`torch.optim`](https://pytorch.org/docs/stable/optim.html#module-torch.optim) you have to construct an optimizer object, that will hold the current state and will update the parameters based on the computed gradients.
