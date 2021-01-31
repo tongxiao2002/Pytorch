@@ -340,3 +340,60 @@ The negative log likelihood loss. 负对数似然损失。
 ## 3. `torch.optim` 修正类
 
 To use [`torch.optim`](https://pytorch.org/docs/stable/optim.html#module-torch.optim) you have to construct an optimizer object, that will hold the current state and will update the parameters based on the computed gradients.
+
+### (1). `torch.optim.SGD`
+
+随机梯度下降法进行优化，最普遍的应用。
+
+```python
+torch.optim.SGD(params, lr=<required parameter>, momentum=0, dampening=0, weight_decay=0, nesterov=False)
+```
+
+其中`lr`为学习率。
+
+`torch.optim.step()`函数进行一次优化操作，即对网络中的参数进行一次更新。
+
+# 六、数据导入
+
+## 1. `torchvision.datasets`
+
+## 2. `torch.util.data`
+
+## (1). Dataset Types
+
+#### Map-style datasets
+
+
+
+#### Iterable-style datasets
+
+这种类型的数据集特别适用于随机读取代价很大甚至不可能的情况，并且批处理大小(batch size)取决于所获取的数据。
+
+## 3. `torchvision.transforms`
+
+通常神经网络的输入图片是有一定的格式要求的，比如像素长度、高度等等要求。而一般的图片输入格式又是多种多样的，因此为了保证神经网络的正常运行，需要使用`torchvision.transforms`包对输入图片(`PIL.Image`)等进行格式化.
+
+以下当作自动执行了
+
+```python
+from PIL import Image
+import torchvision.transforms as transforms
+```
+
+### (1). `transforms.Compose()`
+
+### (2). `transforms.Resize()`
+
+### (3). `transforms.CenterCrop()`
+
+### (4). `transforms.ToTensor()`
+
+### (5). `transforms.Normalize()`
+
+# CNN
+
+# RNN
+
+## LSTM
+
+# SANN
