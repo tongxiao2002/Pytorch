@@ -22,38 +22,37 @@ from utils import param_parser as parser
 
 logging.getLogger('Pytorch').disabled = True
 
-class CNN(nn.Module):
-    def __init__(self, args):
-        super(CNN, self).__init__()
-        self.conv1 = nn.Conv2d(2, 64, 5, 1)
-        self.conv2 = nn.Conv2d(64, 32, 5, 1)
-        #Expected 4-dimensional input for 4-dimensional weight [32, 1, 5, 5], but got 3-dimensional input of size [64, 320, 100] instead
-        self.max_pool = nn.MaxPool2d(2, 2)
-        self.dropout = nn.Dropout(args.dropout_rate)
-        self.fc1 = nn.Linear((32 * 37 * 22), 1000)
-        # ((args.pad_seq_len - 4) / 2 - 4) / 2
-        self.fc2 = nn.Linear(1000, 100)
-        self.fc3 = nn.Linear(100, 2)
+class RNN(nn.Module):
+    def __init__(self, args, device):
+        super(RNN, self).__init__()
+        self.num_layers = 6
+        self.num_directions = 1
+        self.hidden_size = args.fc_dim
+        self.output_size = args.pad_seq_len * args.batch_size * self.num_directions * self.hidden_size
+        self.lstm = nn.LSTM(input_size=args.embedding_dim,
+                            hidden_size=self.hidden_size,
+                            num_layers=self.num_layers,
+                            bidirectional=False,
+                            batch_first=True)
+        self.fc = nn.Linear(self.output_size * 2, 2)
+        self.hidden = self.init_hidden()        #初始化隐藏层
+        self.out = self.init_hidden()
+
+    def init_hidden(self):
+        return torch.randn(self.num_layers * self.num_directions, args.batch_size, self.hidden_size).to(device)
 
     def forward(self, x):
         '''
         向前传播
         '''
-        x = self.conv1(x)
-        #print(x.size())
-        x = F.relu(x)
-        x = self.max_pool(x)
-        x = self.conv2(x)
-        x = F.relu(x)
-        x = self.max_pool(x)
-        x = torch.flatten(x, 1)
-        x = self.dropout(x)
-        x = self.fc1(x)
-        x = self.fc2(x)
-        x = self.fc3(x)
-        x = F.log_softmax(x, dim=1)
+        out, (middle_hidden, middle_out) = self.lstm(x, (self.hidden, self.out))
+        print("out_shape: {0}\thidden_shape: {1}\t".format(out.size(), middle_hidden.size()))
+        # ? 这里为什么结果大小比预计的大了 1 倍 ?, 因为在 getitem() 中我将 front 和 behind 连到了一起, 因此是 seq_len 增大了一倍
+        shape_out = torch.reshape(out, (1, self.output_size * 2))
+        fc_out = self.fc(shape_out)
+        final_out = F.log_softmax(fc_out, dim=1)
 
-        return x
+        return final_out
 
 class TextData(torch.utils.data.Dataset):
     def __init__(self, args, input_file, word2idx, embedding_matrix):	# read input_file
@@ -79,7 +78,7 @@ class TextData(torch.utils.data.Dataset):
             self.Data['b_content_index'] = []
             self.Data['labels'] = []
 
-            print("Tokens to Vectors...")
+            print("Tokens to Vectors ...")
             for eachline in fin:	# type(eachline) = str
                 record = json.loads(eachline)	# type(record) = dict
                 f_id = record['front_testid']
@@ -139,8 +138,8 @@ class TextData(torch.utils.data.Dataset):
         return self.length
 
     def __getitem__(self, idx):
-        return torch.Tensor([self.Data['f_content_vector'][idx], self.Data['b_content_vector'][idx]]), \
-               torch.Tensor(self.Data['2_labels'][idx])
+        return torch.Tensor(self.Data['f_content_vector'][idx] + self.Data['b_content_vector'][idx]), \
+               torch.Tensor(self.Data['2_labels'][idx])	#合并两个文本列表, 作为神经网络输入
 
 def load_word2vec_matrix(word2vec_file):	#导入训练数据
     if not os.path.isfile(word2vec_file):
@@ -167,49 +166,25 @@ def train(args, model, train_loader, device, epoch):
     for batch_idx, (vectors, label) in enumerate(train_loader):
         vectors = vectors.to(device)
         label = label.to(device)
-        optimizer = optim.SGD(model.parameters(), lr=args.learning_rate, momentum=0.8)
+        optimizer = optim.Adadelta(model.parameters(), lr=args.learning_rate)
         optimizer.zero_grad()
         output = model(vectors)	# 待修改
 
         loss_func = nn.MSELoss()
         loss = loss_func(output, label)
-        loss.backward()
+        loss.backward(retain_graph=True)
 
         optimizer.step()
         # 打印进度条
 
         print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-            epoch, batch_idx * args.batch_size + len(vectors), len(train_loader.dataset),
-                   (100. * batch_idx * args.batch_size + len(vectors)) / len(train_loader.dataset), loss.item()))
+            epoch, batch_idx * len(vectors), len(train_loader.dataset),	#为什么 len(train_loader.dataset) 恒为 128？
+                   100. * batch_idx / len(train_loader), loss.item()))
     print("\n\n\n")
 
-def test(model, device, test_loader):
-    model.eval()
-    test_loss = 0
-    correct = 0
-    with torch.no_grad():
-        for data, target in test_loader:
-            data, target = data.to(device), target.to(device)
-            output = model(data)
-            loss_func = nn.MSELoss(reduction='sum')
-            test_loss += loss_func(output, target)  # sum up batch loss
-            pred = output.argmax(dim=1, keepdim=False)  # get the index of the max log-probability
-            target = target.argmax(dim=1, keepdim=False)
-            for idx in range(len(pred)):
-                if pred[idx] == target[idx]:
-                    correct += 1
-                else:
-                    pass
+def train_RNN(args, device):
 
-    test_loss /= len(test_loader.dataset)
-
-    print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
-        test_loss, correct, len(test_loader.dataset),
-        100. * correct / len(test_loader.dataset)))
-
-def train_CNN(args):
-
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")	#使用 gpu
+    
     # Load word2vec model
     print("Loading data...")
     word2idx, embedding_matrix = dh.load_word2vec_matrix(args.word2vec_file)
@@ -217,21 +192,21 @@ def train_CNN(args):
     # Load sentences, labels, and training parameters
     print("Data processing...")
     train_data = TextData(args, args.train_file, word2idx, embedding_matrix)
-    test_data = TextData(args, args.test_file, word2idx, embedding_matrix)
+    #	test_data = TextData(args, args.test_file, word2idx, embedding_matrix)
     train_loader = torch.utils.data.DataLoader(train_data, args.batch_size, shuffle=True, num_workers=1)
-    test_loader = torch.utils.data.DataLoader(test_data, args.batch_size, shuffle=False, num_workers=1)
+    #	test_loader = torch.utils.data.DataLoader(test_data, args.batch_size, shuffle=False, num_workers=1)
 
-    model = CNN(args).to(device)
-    #print(model)
+    model = RNN(args, device).to(device)
+    print(model)
 
     for epoch in range(1, args.epochs + 1):
         train(args, model, train_loader, device, epoch)
-        test(model, device, test_loader)
 
 #torch.save(model.state_dict(), "../data/TextCNN.pt")
 
 
 if __name__ == '__main__':
     args = parser.parameter_parser()	# add parser by using argparse module
-    train_CNN(args)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")	#使用 gpu
+    train_RNN(args, device)
     x = print("Press any key to continue...")
